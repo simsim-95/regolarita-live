@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Regolarità live</title>
+<style>
+:root{--bg:#fff;--fg:#111;--mu:#666;--ln:#ddd}
+@media(prefers-color-scheme:dark){:root{--bg:#111;--fg:#eee;--mu:#999;--ln:#333}}
+body{margin:0 auto;padding:12px;max-width:720px;font:16px system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+h1{font-size:20px;margin:0}h2{font-size:16px;margin:20px 0 4px}.mu{color:var(--mu)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--ln)}
+.et{font-size:22px;font-weight:600}.sc{font-size:30px;font-weight:700}
+.g{color:#2e7d32}.b{color:#0288d1}.r{color:#c62828}.live{font-weight:700;color:#c62828}
+details{border-bottom:1px solid var(--ln)}summary{cursor:pointer;font-weight:600;padding:10px 0}
+</style></head><body>
+<h1 id="t">Regolarità live</h1><div class="mu" id="s">Connessione…</div>
+<div id="cur"></div><h2>Prove precedenti</h2><div id="prev"></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getDatabase,ref,onValue} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+const $=i=>document.getElementById(i),q=new URLSearchParams(location.search);
+const db=q.get("db"),tk=q.get("s");
+if(!db||!tk){$("s").textContent="Link non valido: usa il link condiviso dal tablet."}
+else{
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=ms=>(ms/1000).toFixed(2);
+const cls=sc=>{const c=Math.round(sc/10);return c===0?"g":c<0?"b":"r"};
+const sgn=sc=>{const r=Math.round(sc/10)/100;return (r>0?"+":"")+r.toFixed(2)};
+const rows=(a,circ)=>a.map(x=>`<div class="row"><div><div class="et">${circ?`Giro ${esc(x.giro)} · `:""}P${esc(x.p)}</div><div class="mu">${x.int==null?"Partenza":fmt(x.int)+" s"}</div></div>${x.sc==null?"":`<div class="sc ${cls(x.sc)}">${sgn(x.sc)} s</div>`}</div>`).join("");
+const titolo=x=>esc(x.nome)+(x.auto?" · Auto "+esc(x.auto):"")+(x.tentativo>1?" · Tentativo "+esc(x.tentativo):"");
+const open=new Set(),seen=new Set();
+$("prev").addEventListener("toggle",e=>{const k=e.target.dataset.k;if(k){e.target.open?open.add(k):open.delete(k)}},true);
+onValue(ref(getDatabase(initializeApp({databaseURL:db})),"live/"+tk),snap=>{
+  const v=snap.val();
+  if(!v){$("s").textContent="In attesa di dati…";return}
+  $("s").textContent="Aggiornato alle "+new Date().toLocaleTimeString("it-IT");
+  $("t").textContent=v.meta?.nome||"Regolarità live";
+  const circ=v.meta?.modalita==="CIRCUITO",runs={};
+  Object.values(v.passaggi||{}).forEach(x=>(runs[x.run]??=[]).push(x));
+  const list=Object.entries(runs).map(([k,a])=>{a.sort((m,n)=>m.ordine-n.ordine);return{k,a,ts:Math.max(...a.map(x=>x.ts))}}).sort((m,n)=>n.ts-m.ts);
+  const st=v.stato,liveKey=st&&st.attiva?st.run:null;
+  $("cur").innerHTML=liveKey?`<h2><span class="live">● IN CORSA</span> ${titolo(st)}</h2>`+rows(runs[liveKey]||[],circ)+((runs[liveKey]||[]).length?"":'<div class="mu">In attesa del primo passaggio…</div>'):'<h2 class="mu">Nessuna prova in corso</h2>';
+  const prev=list.filter(r=>r.k!==liveKey);
+  prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
+  $("prev").innerHTML=prev.length?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join(""):'<div class="mu">Nessuna prova completata.</div>';
+},err=>{$("s").textContent="Errore: "+err.message});
+}
+</script></body></html>
