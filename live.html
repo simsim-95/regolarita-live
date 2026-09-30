@@ -18,6 +18,14 @@ details{border-bottom:1px solid var(--ln)}summary{cursor:pointer;font-weight:600
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getDatabase,ref,onValue} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 const $=i=>document.getElementById(i),q=new URLSearchParams(location.search);
+// Tiene lo schermo acceso finche' la pagina resta aperta (se il browser lo supporta).
+let wakeLock=null;
+async function chiediWakeLock(){
+  try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }
+  catch(e){ /* non supportato o negato: la pagina funziona comunque */ }
+}
+chiediWakeLock();
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") chiediWakeLock(); });
 const db=q.get("db"),tk=q.get("s");
 if(!db||!tk){$("s").textContent="Link non valido: usa il link condiviso dal tablet."}
 else{
