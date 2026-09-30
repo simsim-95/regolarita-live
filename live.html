@@ -45,9 +45,16 @@ onValue(ref(getDatabase(initializeApp({databaseURL:db})),"live/"+tk),snap=>{
   const circ=v.meta?.modalita==="CIRCUITO",runs={};
   Object.values(v.passaggi||{}).forEach(x=>(runs[x.run]??=[]).push(x));
   const list=Object.entries(runs).map(([k,a])=>{a.sort((m,n)=>m.ordine-n.ordine);return{k,a,ts:Math.max(...a.map(x=>x.ts))}}).sort((m,n)=>n.ts-m.ts);
-  const st=v.stato,liveKey=st&&st.attiva?st.run:null;
-  $("cur").innerHTML=liveKey?`<h2><span class="live">● IN CORSA</span> ${titolo(st)}</h2>`+rows(runs[liveKey]||[],circ)+((runs[liveKey]||[]).length?"":'<div class="mu">In attesa del primo passaggio…</div>'):'<h2 class="mu">Nessuna prova in corso</h2>';
-  const prev=list.filter(r=>r.k!==liveKey);
+  const st=v.stato||{};
+  const liveKeys=new Set(Object.values(st).filter(s=>s&&s.attiva).map(s=>s.run));
+  $("cur").innerHTML=liveKeys.size
+    ?[...liveKeys].map(k=>{
+        const s=Object.values(st).find(x=>x.run===k)||{};
+        const a=runs[k]||[];
+        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rows(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
+      }).join("")
+    :'<h2 class="mu">Nessuna prova in corso</h2>';
+  const prev=list.filter(r=>!liveKeys.has(r.k));
   prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
   $("prev").innerHTML=prev.length?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join(""):'<div class="mu">Nessuna prova completata.</div>';
 },err=>{$("s").textContent="Errore: "+err.message});
