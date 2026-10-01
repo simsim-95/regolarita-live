@@ -11,8 +11,14 @@ h1{font-size:20px;margin:0}h2{font-size:16px;margin:20px 0 4px}.mu{color:var(--m
 .et{font-size:22px;font-weight:600}.sc{font-size:30px;font-weight:700}
 .g{color:#2e7d32}.b{color:#0288d1}.r{color:#c62828}.live{font-weight:700;color:#c62828}
 details{border-bottom:1px solid var(--ln)}summary{cursor:pointer;font-weight:600;padding:10px 0}
+.filtro-riga{display:flex;align-items:center;gap:8px;margin-top:10px}
+.filtro-riga select{font:16px system-ui,sans-serif;padding:6px 8px;border-radius:6px;border:1px solid var(--ln);background:var(--bg);color:var(--fg)}
 </style></head><body>
 <h1 id="t">Regolarità live</h1><div class="mu" id="s">Connessione…</div>
+<div class="filtro-riga" id="filtroRiga" style="display:none">
+  <label for="filtro">Equipaggio:</label>
+  <select id="filtro"><option value="">Tutti</option></select>
+</div>
 <div id="cur"></div><h2>Prove precedenti</h2><div id="prev"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -21,8 +27,8 @@ const $=i=>document.getElementById(i),q=new URLSearchParams(location.search);
 // Tiene lo schermo acceso finche' la pagina resta aperta (se il browser lo supporta).
 let wakeLock=null;
 async function chiediWakeLock(){
-  try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }
-  catch(e){ /* non supportato o negato: la pagina funziona comunque */ }
+  try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }
+  catch(e){ /* non supportato o negato: la pagina funziona comunque */ }
 }
 chiediWakeLock();
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") chiediWakeLock(); });
@@ -37,26 +43,47 @@ const rows=(a,circ)=>a.map(x=>`<div class="row"><div><div class="et">${circ?`Gir
 const titolo=x=>esc(x.nome)+(x.auto?" · Auto "+esc(x.auto):"")+(x.tentativo>1?" · Tentativo "+esc(x.tentativo):"");
 const open=new Set(),seen=new Set();
 $("prev").addEventListener("toggle",e=>{const k=e.target.dataset.k;if(k){e.target.open?open.add(k):open.delete(k)}},true);
+
+// Filtro "il mio equipaggio": la scelta resta ricordata su questo telefono per questa sessione.
+const chiaveFiltro="rf_"+tk;
+let filtro=localStorage.getItem(chiaveFiltro)||"";
+const selFiltro=$("filtro");
+selFiltro.addEventListener("change",()=>{
+  filtro=selFiltro.value;
+  if(filtro) localStorage.setItem(chiaveFiltro,filtro); else localStorage.removeItem(chiaveFiltro);
+  if(ultimoSnapshot) disegna(ultimoSnapshot);
+});
+let ultimoSnapshot=null;
+
+function disegna(v){
+  }
+
+  const corrisponde=nome=>!filtro||nome===filtro;
+
+  const liveFiltrate=[...liveKeys].filter(k=>{
+    const s=Object.values(st).find(x=>x.run===k);
+    return s&&corrisponde(s.nome);
+  });
+  $("cur").innerHTML=liveFiltrate.length
+    ?liveFiltrate.map(k=>{
+        const s=Object.values(st).find(x=>x.run===k)||{};
+        const a=runs[k]||[];
+        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rows(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
+      }).join("")
+    :`<h2 class="mu">${filtro?"Nessuna prova in corso per questo equipaggio":"Nessuna prova in corso"}</h2>`;
+
+  const prev=list.filter(r=>!liveKeys.has(r.k)&&corrisponde(r.a[0]?.nome));
+  prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
+  $("prev").innerHTML=prev.length
+    ?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join("")
+    :`<div class="mu">${filtro?"Nessuna prova completata per questo equipaggio.":"Nessuna prova completata."}</div>`;
+}
+
 onValue(ref(getDatabase(initializeApp({databaseURL:db})),"live/"+tk),snap=>{
-  const v=snap.val();
-  if(!v){$("s").textContent="In attesa di dati…";return}
-  $("s").textContent="Aggiornato alle "+new Date().toLocaleTimeString("it-IT");
-  $("t").textContent=v.meta?.nome||"Regolarità live";
-  const circ=v.meta?.modalita==="CIRCUITO",runs={};
-  Object.values(v.passaggi||{}).forEach(x=>(runs[x.run]??=[]).push(x));
-  const list=Object.entries(runs).map(([k,a])=>{a.sort((m,n)=>m.ordine-n.ordine);return{k,a,ts:Math.max(...a.map(x=>x.ts))}}).sort((m,n)=>n.ts-m.ts);
-  const st=v.stato||{};
-  const liveKeys=new Set(Object.values(st).filter(s=>s&&s.attiva).map(s=>s.run));
-  $("cur").innerHTML=liveKeys.size
-    ?[...liveKeys].map(k=>{
-        const s=Object.values(st).find(x=>x.run===k)||{};
-        const a=runs[k]||[];
-        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rows(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
-      }).join("")
-    :'<h2 class="mu">Nessuna prova in corso</h2>';
-  const prev=list.filter(r=>!liveKeys.has(r.k));
-  prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
-  $("prev").innerHTML=prev.length?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join(""):'<div class="mu">Nessuna prova completata.</div>';
+  const v=snap.val();
+  if(!v){$("s").textContent="In attesa di dati…";return}
+  ultimoSnapshot=v;
+  disegna(v);
 },err=>{$("s").textContent="Errore: "+err.message});
 }
 </script></body></html>
