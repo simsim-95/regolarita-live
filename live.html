@@ -35,6 +35,7 @@ document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==
 const db=q.get("db"),tk=q.get("s");
 if(!db||!tk){$("s").textContent="Link non valido: usa il link condiviso dal tablet."}
 else{
+try{
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=ms=>(ms/1000).toFixed(2);
 const cls=sc=>{const c=Math.round(sc/10);return c===0?"g":c<0?"b":"r"};
@@ -48,14 +49,37 @@ $("prev").addEventListener("toggle",e=>{const k=e.target.dataset.k;if(k){e.targe
 const chiaveFiltro="rf_"+tk;
 let filtro=localStorage.getItem(chiaveFiltro)||"";
 const selFiltro=$("filtro");
-selFiltro.addEventListener("change",()=>{
-  filtro=selFiltro.value;
-  if(filtro) localStorage.setItem(chiaveFiltro,filtro); else localStorage.removeItem(chiaveFiltro);
-  if(ultimoSnapshot) disegna(ultimoSnapshot);
-});
+if(selFiltro){
+  selFiltro.addEventListener("change",()=>{
+    filtro=selFiltro.value;
+    if(filtro) localStorage.setItem(chiaveFiltro,filtro); else localStorage.removeItem(chiaveFiltro);
+    if(ultimoSnapshot) disegna(ultimoSnapshot);
+  });
+}
 let ultimoSnapshot=null;
 
 function disegna(v){
+  $("s").textContent="Aggiornato alle "+new Date().toLocaleTimeString("it-IT");
+  $("t").textContent=v.meta?.nome||"Regolarità live";
+  const circ=v.meta?.modalita==="CIRCUITO",runs={};
+  Object.values(v.passaggi||{}).forEach(x=>(runs[x.run]??=[]).push(x));
+  const list=Object.entries(runs).map(([k,a])=>{a.sort((m,n)=>m.ordine-n.ordine);return{k,a,ts:Math.max(...a.map(x=>x.ts))}}).sort((m,n)=>n.ts-m.ts);
+  const st=v.stato||{};
+  const liveKeys=new Set(Object.values(st).filter(s=>s&&s.attiva).map(s=>s.run));
+
+  // Popola la tendina con gli equipaggi visti finora, senza perdere la selezione corrente.
+  if(selFiltro){
+    const nomi=new Set();
+    Object.values(st).forEach(s=>{if(s&&s.nome)nomi.add(s.nome)});
+    list.forEach(r=>{if(r.a[0]&&r.a[0].nome)nomi.add(r.a[0].nome)});
+    if(nomi.size){
+      $("filtroRiga").style.display="flex";
+      const attuali=new Set([...selFiltro.options].map(o=>o.value));
+      [...nomi].sort((a,b)=>a.localeCompare(b,"it")).forEach(n=>{
+        if(!attuali.has(n)){const o=document.createElement("option");o.value=n;o.textContent=n;selFiltro.appendChild(o)}
+      });
+      selFiltro.value=filtro;
+    }
   }
 
   const corrisponde=nome=>!filtro||nome===filtro;
@@ -83,7 +107,11 @@ onValue(ref(getDatabase(initializeApp({databaseURL:db})),"live/"+tk),snap=>{
   const v=snap.val();
   if(!v){$("s").textContent="In attesa di dati…";return}
   ultimoSnapshot=v;
-  disegna(v);
-},err=>{$("s").textContent="Errore: "+err.message});
+  try{ disegna(v); }catch(e){ $("s").textContent="Errore nella pagina: "+e.message; console.error(e); }
+},err=>{$("s").textContent="Errore di connessione: "+err.message});
+}catch(e){
+  $("s").textContent="Errore nella pagina: "+e.message;
+  console.error(e);
+}
 }
 </script></body></html>
