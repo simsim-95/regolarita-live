@@ -24,19 +24,19 @@ tr.me{background:color-mix(in srgb, var(--fg) 8%, transparent)}
 </style></head><body>
 <h1 id="t">Regolarità live</h1><div class="mu" id="s">Connessione…</div>
 <div class="filtro-riga" id="filtroRiga" style="display:none">
-  <label for="filtro">Equipaggio:</label>
-  <select id="filtro"><option value="">Tutti</option></select>
+  <label for="filtro">Equipaggio:</label>
+  <select id="filtro"><option value="">Tutti</option></select>
 </div>
 <div class="tab-riga">
-  <button id="tabLive" class="attivo">Live</button>
-  <button id="tabClassifica">Classifica</button>
+  <button id="tabLive" class="attivo">Live</button>
+  <button id="tabClassifica">Classifica</button>
 </div>
 <div id="vistaLive">
-  <div id="cur"></div><h2>Prove precedenti</h2><div id="prev"></div>
+  <div id="cur"></div><h2>Prove precedenti</h2><div id="prev"></div>
 </div>
 <div id="vistaClassifica" style="display:none">
-  <p class="mu" style="margin-top:12px">Per ogni equipaggio conta il suo tentativo migliore (penalità più bassa). Solo i passaggi con un tempo target impostato contribuiscono alla penalità.</p>
-  <div id="classifica"></div>
+  <p class="mu" style="margin-top:12px">Per ogni equipaggio conta il suo tentativo migliore (penalità più bassa). Solo i passaggi con un tempo target impostato contribuiscono alla penalità.</p>
+  <div id="classifica"></div>
 </div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -45,8 +45,8 @@ const $=i=>document.getElementById(i),q=new URLSearchParams(location.search);
 // Tiene lo schermo acceso finche' la pagina resta aperta (se il browser lo supporta).
 let wakeLock=null;
 async function chiediWakeLock(){
-  try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }
-  catch(e){ /* non supportato o negato: la pagina funziona comunque */ }
+  try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }
+  catch(e){ /* non supportato o negato: la pagina funziona comunque */ }
 }
 chiediWakeLock();
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") chiediWakeLock(); });
@@ -68,11 +68,11 @@ const chiaveFiltro="rf_"+tk;
 let filtro=localStorage.getItem(chiaveFiltro)||"";
 const selFiltro=$("filtro");
 if(selFiltro){
-  selFiltro.addEventListener("change",()=>{
-    filtro=selFiltro.value;
-    if(filtro) localStorage.setItem(chiaveFiltro,filtro); else localStorage.removeItem(chiaveFiltro);
-    if(ultimoSnapshot) disegna(ultimoSnapshot);
-  });
+  selFiltro.addEventListener("change",()=>{
+    filtro=selFiltro.value;
+    if(filtro) localStorage.setItem(chiaveFiltro,filtro); else localStorage.removeItem(chiaveFiltro);
+    if(ultimoSnapshot) disegna(ultimoSnapshot);
+  });
 }
 let ultimoSnapshot=null;
 
@@ -80,114 +80,105 @@ let ultimoSnapshot=null;
 const tabLive=$("tabLive"),tabClassifica=$("tabClassifica");
 const vistaLive=$("vistaLive"),vistaClassifica=$("vistaClassifica");
 tabLive.addEventListener("click",()=>{
-  tabLive.classList.add("attivo");tabClassifica.classList.remove("attivo");
-  vistaLive.style.display="";vistaClassifica.style.display="none";
+  tabLive.classList.add("attivo");tabClassifica.classList.remove("attivo");
+  vistaLive.style.display="";vistaClassifica.style.display="none";
 });
 tabClassifica.addEventListener("click",()=>{
-  tabClassifica.classList.add("attivo");tabLive.classList.remove("attivo");
-  vistaClassifica.style.display="";vistaLive.style.display="none";
+  tabClassifica.classList.add("attivo");tabLive.classList.remove("attivo");
+  vistaClassifica.style.display="";vistaLive.style.display="none";
 });
 
 function renderClassifica(list){
-  // Penalità di un tentativo = somma dei |scarto| sui soli passaggi con un target impostato.
-  // In classifica conta la MEDIA delle penalità di tutti i tentativi giudicabili di ciascun equipaggio
-  // (premia la costanza, non solo il tentativo migliore).
-  const perNome=new Map();
-  list.forEach(r=>{
-    const nome=r.a[0]?.nome; if(!nome) return;
-    const giudicati=r.a.filter(x=>x.sc!=null);
-    const penalita=giudicati.reduce((s,x)=>s+Math.abs(x.sc),0);
-    const voce=perNome.get(nome)||{nome,auto:r.a[0]?.auto||"",tentativi:0,penalitaTentativi:[]};
-    voce.tentativi++;
-    if(giudicati.length) voce.penalitaTentativi.push(penalita);
-    perNome.set(nome,voce);
-  });
-  perNome.forEach(v=>{
-    v.media=v.penalitaTentativi.length
-      ? v.penalitaTentativi.reduce((s,p)=>s+p,0)/v.penalitaTentativi.length
-      : null;
-  });
-  const classificati=[...perNome.values()].filter(v=>v.media!==null).sort((a,b)=>a.media-b.media);
-  const nonClassificati=[...perNome.values()].filter(v=>v.media===null);
+  // Media = somma di |scarto| su TUTTI i passaggi giudicati di tutti i tentativi di un equipaggio,
+  // diviso il numero di quei passaggi. Anticipo e ritardo pesano allo stesso modo (valore assoluto).
+  const perNome=new Map();
+  list.forEach(r=>{
+    const nome=r.a[0]?.nome; if(!nome) return;
+    const voce=perNome.get(nome)||{nome,auto:r.a[0]?.auto||"",tentativi:0,sommaAssoluti:0,numGiudicati:0};
+    voce.tentativi++;
+    r.a.forEach(x=>{ if(x.sc!=null){ voce.sommaAssoluti+=Math.abs(x.sc); voce.numGiudicati++; } });
+    perNome.set(nome,voce);
+  });
+  const classificati=[...perNome.values()].filter(v=>v.numGiudicati>0).sort((a,b)=>(a.sommaAssoluti/a.numGiudicati)-(b.sommaAssoluti/b.numGiudicati));
+  const nonClassificati=[...perNome.values()].filter(v=>v.numGiudicati===0);
 
-  if(!classificati.length && !nonClassificati.length){
-    $("classifica").innerHTML='<div class="mu">Nessuna prova completata finora.</div>';
-    return;
-  }
-  let html='<table><tr><th></th><th>Equipaggio</th><th>Tentativi</th><th style="text-align:right">Penalità media</th></tr>';
-  classificati.forEach((v,i)=>{
-    const sel=filtro&&v.nome===filtro?"me":"";
-    const nGiudicati=v.penalitaTentativi.length;
-    const nota=nGiudicati<v.tentativi?` <span class="mu">(su ${nGiudicati} di ${v.tentativi})</span>`:"";
-    html+=`<tr class="${sel}"><td class="pos">${i+1}</td><td>${esc(v.nome)}${v.auto?' · Auto '+esc(v.auto):""}${nota}</td><td>${v.tentativi}</td><td class="pen">${(v.media/1000).toFixed(2)} s</td></tr>`;
-  });
-  html+="</table>";
-  if(nonClassificati.length){
-    html+='<p class="mu" style="margin-top:14px">Senza penalità calcolabile (nessun target impostato sui loro passaggi):</p><table>';
-    nonClassificati.forEach(v=>{
-      html+=`<tr><td></td><td>${esc(v.nome)}${v.auto?' · Auto '+esc(v.auto):""}</td><td>${v.tentativi}</td><td class="pen">—</td></tr>`;
-    });
-    html+="</table>";
-  }
-  $("classifica").innerHTML=html;
+  if(!classificati.length && !nonClassificati.length){
+    $("classifica").innerHTML='<div class="mu">Nessuna prova completata finora.</div>';
+    return;
+  }
+  let html='<table><tr><th></th><th>Equipaggio</th><th>Tentativi</th><th style="text-align:right">Scarto medio</th></tr>';
+  classificati.forEach((v,i)=>{
+    const sel=filtro&&v.nome===filtro?"me":"";
+    const media=v.sommaAssoluti/v.numGiudicati;
+    html+=`<tr class="${sel}"><td class="pos">${i+1}</td><td>${esc(v.nome)}${v.auto?' · Auto '+esc(v.auto):""} <span class="mu">(su ${v.numGiudicati} passaggi)</span></td><td>${v.tentativi}</td><td class="pen">${(media/1000).toFixed(2)} s</td></tr>`;
+  });
+  html+="</table>";
+  if(nonClassificati.length){
+    html+='<p class="mu" style="margin-top:14px">Senza scarto calcolabile (nessun target impostato sui loro passaggi):</p><table>';
+    nonClassificati.forEach(v=>{
+      html+=`<tr><td></td><td>${esc(v.nome)}${v.auto?' · Auto '+esc(v.auto):""}</td><td>${v.tentativi}</td><td class="pen">—</td></tr>`;
+    });
+    html+="</table>";
+  }
+  $("classifica").innerHTML=html;
 }
 
 function disegna(v){
-  $("s").textContent="Aggiornato alle "+new Date().toLocaleTimeString("it-IT");
-  $("t").textContent=v.meta?.nome||"Regolarità live";
-  const circ=v.meta?.modalita==="CIRCUITO",runs={};
-  Object.values(v.passaggi||{}).forEach(x=>(runs[x.run]??=[]).push(x));
-  const list=Object.entries(runs).map(([k,a])=>{a.sort((m,n)=>m.ordine-n.ordine);return{k,a,ts:Math.max(...a.map(x=>x.ts))}}).sort((m,n)=>n.ts-m.ts);
-  const st=v.stato||{};
-  const liveKeys=new Set(Object.values(st).filter(s=>s&&s.attiva).map(s=>s.run));
+  $("s").textContent="Aggiornato alle "+new Date().toLocaleTimeString("it-IT");
+  $("t").textContent=v.meta?.nome||"Regolarità live";
+  const circ=v.meta?.modalita==="CIRCUITO",runs={};
+  Object.values(v.passaggi||{}).forEach(x=>(runs[x.run]??=[]).push(x));
+  const list=Object.entries(runs).map(([k,a])=>{a.sort((m,n)=>m.ordine-n.ordine);return{k,a,ts:Math.max(...a.map(x=>x.ts))}}).sort((m,n)=>n.ts-m.ts);
+  const st=v.stato||{};
+  const liveKeys=new Set(Object.values(st).filter(s=>s&&s.attiva).map(s=>s.run));
 
-  // Popola la tendina con gli equipaggi visti finora, senza perdere la selezione corrente.
-  if(selFiltro){
-    const nomi=new Set();
-    Object.values(st).forEach(s=>{if(s&&s.nome)nomi.add(s.nome)});
-    list.forEach(r=>{if(r.a[0]&&r.a[0].nome)nomi.add(r.a[0].nome)});
-    if(nomi.size){
-      $("filtroRiga").style.display="flex";
-      const attuali=new Set([...selFiltro.options].map(o=>o.value));
-      [...nomi].sort((a,b)=>a.localeCompare(b,"it")).forEach(n=>{
-        if(!attuali.has(n)){const o=document.createElement("option");o.value=n;o.textContent=n;selFiltro.appendChild(o)}
-      });
-      selFiltro.value=filtro;
-    }
-  }
+  // Popola la tendina con gli equipaggi visti finora, senza perdere la selezione corrente.
+  if(selFiltro){
+    const nomi=new Set();
+    Object.values(st).forEach(s=>{if(s&&s.nome)nomi.add(s.nome)});
+    list.forEach(r=>{if(r.a[0]&&r.a[0].nome)nomi.add(r.a[0].nome)});
+    if(nomi.size){
+      $("filtroRiga").style.display="flex";
+      const attuali=new Set([...selFiltro.options].map(o=>o.value));
+      [...nomi].sort((a,b)=>a.localeCompare(b,"it")).forEach(n=>{
+        if(!attuali.has(n)){const o=document.createElement("option");o.value=n;o.textContent=n;selFiltro.appendChild(o)}
+      });
+      selFiltro.value=filtro;
+    }
+  }
 
-  const corrisponde=nome=>!filtro||nome===filtro;
+  const corrisponde=nome=>!filtro||nome===filtro;
 
-  const liveFiltrate=[...liveKeys].filter(k=>{
-    const s=Object.values(st).find(x=>x.run===k);
-    return s&&corrisponde(s.nome);
-  });
-  $("cur").innerHTML=liveFiltrate.length
-    ?liveFiltrate.map(k=>{
-        const s=Object.values(st).find(x=>x.run===k)||{};
-        const a=runs[k]||[];
-        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rows(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
-      }).join("")
-    :`<h2 class="mu">${filtro?"Nessuna prova in corso per questo equipaggio":"Nessuna prova in corso"}</h2>`;
+  const liveFiltrate=[...liveKeys].filter(k=>{
+    const s=Object.values(st).find(x=>x.run===k);
+    return s&&corrisponde(s.nome);
+  });
+  $("cur").innerHTML=liveFiltrate.length
+    ?liveFiltrate.map(k=>{
+        const s=Object.values(st).find(x=>x.run===k)||{};
+        const a=runs[k]||[];
+        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rows(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
+      }).join("")
+    :`<h2 class="mu">${filtro?"Nessuna prova in corso per questo equipaggio":"Nessuna prova in corso"}</h2>`;
 
-  const prev=list.filter(r=>!liveKeys.has(r.k)&&corrisponde(r.a[0]?.nome));
-  prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
-  $("prev").innerHTML=prev.length
-    ?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join("")
-    :`<div class="mu">${filtro?"Nessuna prova completata per questo equipaggio.":"Nessuna prova completata."}</div>`;
+  const prev=list.filter(r=>!liveKeys.has(r.k)&&corrisponde(r.a[0]?.nome));
+  prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
+  $("prev").innerHTML=prev.length
+    ?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join("")
+    :`<div class="mu">${filtro?"Nessuna prova completata per questo equipaggio.":"Nessuna prova completata."}</div>`;
 
-  renderClassifica(list);
+  renderClassifica(list);
 }
 
 onValue(ref(getDatabase(initializeApp({databaseURL:db})),"live/"+tk),snap=>{
-  const v=snap.val();
-  if(!v){$("s").textContent="In attesa di dati…";return}
-  ultimoSnapshot=v;
-  try{ disegna(v); }catch(e){ $("s").textContent="Errore nella pagina: "+e.message; console.error(e); }
+  const v=snap.val();
+  if(!v){$("s").textContent="In attesa di dati…";return}
+  ultimoSnapshot=v;
+  try{ disegna(v); }catch(e){ $("s").textContent="Errore nella pagina: "+e.message; console.error(e); }
 },err=>{$("s").textContent="Errore di connessione: "+err.message});
 }catch(e){
-  $("s").textContent="Errore nella pagina: "+e.message;
-  console.error(e);
+  $("s").textContent="Errore nella pagina: "+e.message;
+  console.error(e);
 }
 }
 </script></body></html>
