@@ -5,24 +5,27 @@
 <style>
 :root{--bg:#fff;--fg:#111;--mu:#666;--ln:#ddd}
 @media(prefers-color-scheme:dark){:root{--bg:#111;--fg:#eee;--mu:#999;--ln:#333}}
-body{margin:0 auto;padding:12px;max-width:720px;font:16px system-ui,sans-serif;background:var(--bg);color:var(--fg)}
-.intestazione{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.intestazione img{height:48px;width:auto;flex-shrink:0}
-h1{font-size:20px;margin:0}h2{font-size:16px;margin:20px 0 4px}.mu{color:var(--mu)}
-.row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--ln)}
-.et{font-size:22px;font-weight:600}.sc{font-size:30px;font-weight:700}
+body{margin:0 auto;padding:8px 10px;max-width:720px;font:14px system-ui,sans-serif;background:var(--bg);color:var(--fg);line-height:1.25}
+.intestazione{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.intestazione img{height:30px;width:auto;flex-shrink:0}
+h1{font-size:16px;margin:0}h2{font-size:13px;margin:10px 0 2px;color:var(--mu);text-transform:uppercase;letter-spacing:.02em}.mu{color:var(--mu)}
+#s{font-size:11px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid var(--ln)}
+.et{font-size:14px;font-weight:600;white-space:nowrap}.iv{font-size:12px;color:var(--mu);margin-left:6px}
+.sc{font-size:16px;font-weight:700;white-space:nowrap}
 .g{color:#2e7d32}.b{color:#0288d1}.r{color:#c62828}.live{font-weight:700;color:#c62828}
-details{border-bottom:1px solid var(--ln)}summary{cursor:pointer;font-weight:600;padding:10px 0}
-.filtro-riga{display:flex;align-items:center;gap:8px;margin-top:10px}
-.filtro-riga select{font:16px system-ui,sans-serif;padding:6px 8px;border-radius:6px;border:1px solid var(--ln);background:var(--bg);color:var(--fg)}
-.tab-riga{display:flex;gap:8px;margin-top:12px}
-.tab-riga button{flex:1;font:600 15px system-ui,sans-serif;padding:8px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--fg)}
+details{border-bottom:1px solid var(--ln)}summary{cursor:pointer;font-weight:600;padding:5px 0;font-size:13px}
+.filtro-riga{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13px}
+.filtro-riga select{font:13px system-ui,sans-serif;padding:3px 6px;border-radius:6px;border:1px solid var(--ln);background:var(--bg);color:var(--fg)}
+.tab-riga{display:flex;gap:6px;margin-top:8px}
+.tab-riga button{flex:1;font:600 13px system-ui,sans-serif;padding:5px;border-radius:8px;border:1px solid var(--ln);background:var(--bg);color:var(--fg)}
 .tab-riga button.attivo{background:var(--fg);color:var(--bg)}
-table{width:100%;border-collapse:collapse;margin-top:8px}
-th,td{text-align:left;padding:8px 4px;border-bottom:1px solid var(--ln)}
-th{font-size:13px;color:var(--mu);font-weight:600}
-td.pos{font-weight:700;width:28px}td.pen{font-weight:700;text-align:right}
+table{width:100%;border-collapse:collapse;margin-top:4px;font-size:13px}
+th,td{text-align:left;padding:4px 4px;border-bottom:1px solid var(--ln)}
+th{font-size:11px;color:var(--mu);font-weight:600}
+td.pos{font-weight:700;width:20px}td.pen{font-weight:700;text-align:right;white-space:nowrap}
 tr.me{background:color-mix(in srgb, var(--fg) 8%, transparent)}
+.nota{font-size:11px;margin:6px 0}
 </style></head><body>
 <div class="intestazione">
   <div><h1 id="t">Regolarità live</h1><div class="mu" id="s">Connessione…</div></div>
@@ -40,7 +43,7 @@ tr.me{background:color-mix(in srgb, var(--fg) 8%, transparent)}
   <div id="cur"></div><h2>Prove precedenti</h2><div id="prev"></div>
 </div>
 <div id="vistaClassifica" style="display:none">
-  <p class="mu" style="margin-top:12px">Per ogni equipaggio conta lo scarto medio su tutti i passaggi di tutti i tentativi (anticipo e ritardo pesano uguale). Solo i passaggi con un tempo target impostato contribuiscono.</p>
+  <p class="mu nota">Scarto medio su tutti i passaggi/tentativi (anticipo e ritardo pesano uguale).</p>
   <div id="classifica"></div>
 </div>
 <script type="module">
@@ -63,7 +66,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const fmt=ms=>(ms/1000).toFixed(2);
 const cls=sc=>{const c=Math.round(sc/10);return c===0?"g":c<0?"b":"r"};
 const sgn=sc=>{const r=Math.round(sc/10)/100;return (r>0?"+":"")+r.toFixed(2)};
-const rows=(a,circ)=>a.map(x=>`<div class="row"><div><div class="et">${circ?`Giro ${esc(x.giro)} · `:""}P${esc(x.p)}</div><div class="mu">${x.int==null?"Partenza":fmt(x.int)+" s"}</div></div>${x.sc==null?"":`<div class="sc ${cls(x.sc)}">${sgn(x.sc)} s</div>`}</div>`).join("");
+const rows=(a,circ)=>a.map(x=>`<div class="row"><span class="et">${circ?`G${esc(x.giro)}·`:""}P${esc(x.p)}<span class="iv">${x.int==null?"partenza":fmt(x.int)+"s"}</span></span>${x.sc==null?"":`<span class="sc ${cls(x.sc)}">${sgn(x.sc)}s</span>`}</div>`).join("");
 const titolo=x=>esc(x.nome)+(x.auto?" · Auto "+esc(x.auto):"")+(x.tentativo>1?" · Tentativo "+esc(x.tentativo):"");
 const open=new Set(),seen=new Set();
 $("prev").addEventListener("toggle",e=>{const k=e.target.dataset.k;if(k){e.target.open?open.add(k):open.delete(k)}},true);
@@ -115,11 +118,11 @@ function renderClassifica(list){
   classificati.forEach((v,i)=>{
     const sel=filtro&&v.nome===filtro?"me":"";
     const media=v.sommaAssoluti/v.numGiudicati;
-    html+=`<tr class="${sel}"><td class="pos">${i+1}</td><td>${esc(v.nome)}${v.auto?' · Auto '+esc(v.auto):""} <span class="mu">(su ${v.numGiudicati} passaggi)</span></td><td>${v.tentativi}</td><td class="pen">${(media/1000).toFixed(2)} s</td></tr>`;
+    html+=`<tr class="${sel}"><td class="pos">${i+1}</td><td>${esc(v.nome)}${v.auto?' · '+esc(v.auto):""} <span class="mu">(${v.numGiudicati}p)</span></td><td>${v.tentativi}</td><td class="pen">${(media/1000).toFixed(2)}s</td></tr>`;
   });
   html+="</table>";
   if(nonClassificati.length){
-    html+='<p class="mu" style="margin-top:14px">Senza scarto calcolabile (nessun target impostato sui loro passaggi):</p><table>';
+    html+='<p class="mu nota" style="margin-top:8px">Senza scarto calcolabile (nessun target impostato):</p><table>';
     nonClassificati.forEach(v=>{
       html+=`<tr><td></td><td>${esc(v.nome)}${v.auto?' · Auto '+esc(v.auto):""}</td><td>${v.tentativi}</td><td class="pen">—</td></tr>`;
     });
@@ -167,7 +170,10 @@ function disegna(v){
     :`<h2 class="mu">${filtro?"Nessuna prova in corso per questo equipaggio":"Nessuna prova in corso"}</h2>`;
 
   const prev=list.filter(r=>!liveKeys.has(r.k)&&corrisponde(r.a[0]?.nome));
-  prev.forEach(r=>{if(!seen.has(r.k)){seen.add(r.k);open.add(r.k)}});
+  // Solo le ultime 2 prove si aprono da sole; le più vecchie restano compattate
+  // finché non le tocchi tu (una volta aperta/chiusa a mano, resta come l'hai lasciata).
+  const APERTE_DI_DEFAULT=2;
+  prev.forEach((r,i)=>{ if(!seen.has(r.k)){ seen.add(r.k); if(i<APERTE_DI_DEFAULT) open.add(r.k); } });
   $("prev").innerHTML=prev.length
     ?prev.map(r=>`<details data-k="${esc(r.k)}" ${open.has(r.k)?"open":""}><summary>${titolo(r.a[0])}</summary>${rows(r.a,circ)}</details>`).join("")
     :`<div class="mu">${filtro?"Nessuna prova completata per questo equipaggio.":"Nessuna prova completata."}</div>`;
