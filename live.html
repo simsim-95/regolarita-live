@@ -26,6 +26,11 @@ th{font-size:11px;color:var(--mu);font-weight:600}
 td.pos{font-weight:700;width:20px}td.pen{font-weight:700;text-align:right;white-space:nowrap}
 tr.me{background:color-mix(in srgb, var(--fg) 8%, transparent)}
 .nota{font-size:11px;margin:6px 0}
+/* Scheda "Live": dimensioni grandi, come nella versione originale. */
+.grande .row{align-items:center;padding:10px 0}
+.grande .et{font-size:22px;font-weight:600;white-space:normal}
+.grande .iv2{font-size:14px;color:var(--mu)}
+.grande .sc{font-size:30px;font-weight:700}
 </style></head><body>
 <div class="intestazione">
   <div><h1 id="t">Regolarità live</h1><div class="mu" id="s">Connessione…</div></div>
@@ -37,10 +42,14 @@ tr.me{background:color-mix(in srgb, var(--fg) 8%, transparent)}
 </div>
 <div class="tab-riga">
   <button id="tabLive" class="attivo">Live</button>
+  <button id="tabPrecedenti">Precedenti</button>
   <button id="tabClassifica">Classifica</button>
 </div>
-<div id="vistaLive">
-  <div id="cur"></div><h2>Prove precedenti</h2><div id="prev"></div>
+<div id="vistaLive" class="grande">
+  <div id="cur"></div>
+</div>
+<div id="vistaPrecedenti" style="display:none">
+  <h2>Prove precedenti</h2><div id="prev"></div>
 </div>
 <div id="vistaClassifica" style="display:none">
   <p class="mu nota">Scarto medio su tutti i passaggi/tentativi (anticipo e ritardo pesano uguale).</p>
@@ -67,6 +76,8 @@ const fmt=ms=>(ms/1000).toFixed(2);
 const cls=sc=>{const c=Math.round(sc/10);return c===0?"g":c<0?"b":"r"};
 const sgn=sc=>{const r=Math.round(sc/10)/100;return (r>0?"+":"")+r.toFixed(2)};
 const rows=(a,circ)=>a.map(x=>`<div class="row"><span class="et">${circ?`G${esc(x.giro)}·`:""}P${esc(x.p)}<span class="iv">${x.int==null?"partenza":fmt(x.int)+"s"}</span></span>${x.sc==null?"":`<span class="sc ${cls(x.sc)}">${sgn(x.sc)}s</span>`}</div>`).join("");
+// Stessa riga, ma dimensioni grandi (per la scheda Live): due righe per passaggio, come nella versione originale.
+const rowsGrande=(a,circ)=>a.map(x=>`<div class="row"><div><div class="et">${circ?`Giro ${esc(x.giro)} · `:""}P${esc(x.p)}</div><div class="iv2">${x.int==null?"Partenza":fmt(x.int)+" s"}</div></div>${x.sc==null?"":`<div class="sc ${cls(x.sc)}">${sgn(x.sc)} s</div>`}</div>`).join("");
 const titolo=x=>esc(x.nome)+(x.auto?" · Auto "+esc(x.auto):"")+(x.tentativo>1?" · Tentativo "+esc(x.tentativo):"");
 const open=new Set(),seen=new Set();
 $("prev").addEventListener("toggle",e=>{const k=e.target.dataset.k;if(k){e.target.open?open.add(k):open.delete(k)}},true);
@@ -84,16 +95,17 @@ if(selFiltro){
 }
 let ultimoSnapshot=null;
 
-// Tab Live / Classifica: la classifica si ricalcola dagli stessi dati, non serve altro dal tablet.
-const tabLive=$("tabLive"),tabClassifica=$("tabClassifica");
-const vistaLive=$("vistaLive"),vistaClassifica=$("vistaClassifica");
-tabLive.addEventListener("click",()=>{
-  tabLive.classList.add("attivo");tabClassifica.classList.remove("attivo");
-  vistaLive.style.display="";vistaClassifica.style.display="none";
-});
-tabClassifica.addEventListener("click",()=>{
-  tabClassifica.classList.add("attivo");tabLive.classList.remove("attivo");
-  vistaClassifica.style.display="";vistaLive.style.display="none";
+// Tre schede (Live / Precedenti / Classifica): i dati sono sempre gli stessi, cambia solo cosa si vede.
+const tabLive=$("tabLive"),tabPrecedenti=$("tabPrecedenti"),tabClassifica=$("tabClassifica");
+const vistaLive=$("vistaLive"),vistaPrecedenti=$("vistaPrecedenti"),vistaClassifica=$("vistaClassifica");
+const tabs=[[tabLive,vistaLive],[tabPrecedenti,vistaPrecedenti],[tabClassifica,vistaClassifica]];
+tabs.forEach(([bottone,vista])=>{
+  bottone.addEventListener("click",()=>{
+    tabs.forEach(([b,v])=>{
+      b.classList.toggle("attivo",b===bottone);
+      v.style.display=(v===vista)?"":"none";
+    });
+  });
 });
 
 function renderClassifica(list){
@@ -165,7 +177,7 @@ function disegna(v){
     ?liveFiltrate.map(k=>{
         const s=Object.values(st).find(x=>x.run===k)||{};
         const a=runs[k]||[];
-        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rows(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
+        return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rowsGrande(a,circ):'<div class="mu">In attesa del primo passaggio…</div>');
       }).join("")
     :`<h2 class="mu">${filtro?"Nessuna prova in corso per questo equipaggio":"Nessuna prova in corso"}</h2>`;
 
