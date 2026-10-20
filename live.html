@@ -179,7 +179,8 @@ function disegna(v){
   $("cur").innerHTML=liveFiltrate.length
     ?liveFiltrate.map(k=>{
         const s=Object.values(st).find(x=>x.run===k)||{};
-        const a=runs[k]||[];
+        // Più recente in cima, solo per la scheda Live: i Precedenti restano in ordine cronologico.
+        const a=[...(runs[k]||[])].reverse();
         return `<h2><span class="live">● IN CORSA</span> ${titolo(s)}</h2>`+(a.length?rowsGrande(a,circ,singolo):'<div class="mu">In attesa del primo passaggio…</div>');
       }).join("")
     :`<h2 class="mu">${filtro?"Nessuna prova in corso per questo equipaggio":"Nessuna prova in corso"}</h2>`;
