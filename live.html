@@ -75,9 +75,9 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const fmt=ms=>(ms/1000).toFixed(2);
 const cls=sc=>{const c=Math.round(sc/10);return c===0?"g":c<0?"b":"r"};
 const sgn=sc=>{const r=Math.round(sc/10)/100;return (r>0?"+":"")+r.toFixed(2)};
-const rows=(a,circ,singolo)=>a.map(x=>`<div class="row"><span class="et">${singolo?`Passaggio ${esc(x.giro)}`:(circ?`G${esc(x.giro)}·`:"")+`P${esc(x.p)}`}<span class="iv">${x.int==null?"partenza":fmt(x.int)+"s"}</span></span>${x.sc==null?"":`<span class="sc ${cls(x.sc)}">${sgn(x.sc)}s</span>`}</div>`).join("");
+const rows=(a,circ,singolo)=>a.map(x=>`<div class="row"><span class="et">${singolo?`Passaggio ${esc(x.giro)}`:(circ?`G${esc(x.giro)}·`:"")+`P${esc(x.p)}`}<span class="iv">${x.man?"mancato":x.int==null?"partenza":fmt(x.int)+"s"}</span></span>${x.sc==null?"":`<span class="sc ${cls(x.sc)}">${sgn(x.sc)}s</span>`}</div>`).join("");
 // Stessa riga, ma dimensioni grandi (per la scheda Live): due righe per passaggio, come nella versione originale.
-const rowsGrande=(a,circ,singolo)=>a.map(x=>`<div class="row"><div><div class="et">${singolo?`Passaggio ${esc(x.giro)}`:(circ?`Giro ${esc(x.giro)} · `:"")+`P${esc(x.p)}`}</div><div class="iv2">${x.int==null?"Partenza":fmt(x.int)+" s"}</div></div>${x.sc==null?"":`<div class="sc ${cls(x.sc)}">${sgn(x.sc)} s</div>`}</div>`).join("");
+const rowsGrande=(a,circ,singolo)=>a.map(x=>`<div class="row"><div><div class="et">${singolo?`Passaggio ${esc(x.giro)}`:(circ?`Giro ${esc(x.giro)} · `:"")+`P${esc(x.p)}`}</div><div class="iv2">${x.man?"Mancato":x.int==null?"Partenza":fmt(x.int)+" s"}</div></div>${x.sc==null?"":`<div class="sc ${cls(x.sc)}">${sgn(x.sc)} s</div>`}</div>`).join("");
 const titolo=x=>esc(x.nome)+(x.auto?" · Auto "+esc(x.auto):"")+(x.tentativo>1?" · Tentativo "+esc(x.tentativo):"");
 const open=new Set(),seen=new Set();
 $("prev").addEventListener("toggle",e=>{const k=e.target.dataset.k;if(k){e.target.open?open.add(k):open.delete(k)}},true);
